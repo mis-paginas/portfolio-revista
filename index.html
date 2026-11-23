@@ -332,13 +332,14 @@ const ETIQUETAS = [
    Medidas en proporción de UNA página del portfolio:
    x / y = dónde queda la esquina de arriba a la izquierda (el lomo),
    ancho = 0.5 → mide media página (74 mm sobre una página A5).
-   Con x 0.243 / y 0.36 queda centrada sobre el mockup del Zodíaco
-   (el mockup va de 0.156 a 0.856 de ancho y de 0.247 a 0.985 de alto).
+   x 0 = el lomo de la revistita queda sobre el pliegue central del
+   portfolio, así abierta queda centrada en el pliego grande.
+   y 0.36 = su centro a la altura del centro de las tapas grandes.
    Las páginas están en img/revista/01.webp … 12.webp.
    ========================================================= */
 const REV = {
   estado: 8,                 // posición del libro donde se ve (spread de MA)
-  x: 0.243, y: 0.36, ancho: 0.5,
+  x: 0, y: 0.36, ancho: 0.5,
   ratio: 209.764 / 297.638,  // ancho / alto de una página de la revistita
   paginas: 12,
   src: n => `img/revista/${String(n).padStart(2, '0')}.webp`,
