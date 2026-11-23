@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pilar Fagalde · Portfolio</title>
+<meta name="description" content="Portfolio de Pilar Fagalde, estudiante avanzada de la Licenciatura en Diseño Gráfico (UNSTA). Identidad visual, rebranding, diseño editorial y packaging.">
+<meta name="theme-color" content="#A8A8A8">
+<!-- Si se agrega a la pantalla de inicio del celular, se abre sin barras del navegador -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preload" as="image" href="img/02-der.webp">
+<link rel="preload" as="image" href="img/vegetal-barras.png">
+
+<style>
+/* =========================================================
+   1. AJUSTES RÁPIDOS (colores y medidas que podés cambiar)
+   ========================================================= */
+:root {
+  --fondo: #A8A8A8;                       /* gris del fondo (alternativa probada: #8C8C8C) */
+  --vegetal-velo: rgba(255,255,255,.20);  /* cuánto "blanquea" el papel vegetal: 0 = invisible, .5 = muy lechoso */
+  --vegetal-dorso: .75;                   /* opacidad de las barras vistas desde atrás del vegetal */
+  --sombra-libro: 0 18px 40px rgba(0,0,0,.25), 0 3px 10px rgba(0,0,0,.16);
+}
+
+/* =========================================================
+   2. BASE
+   ========================================================= */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--fondo); overflow: hidden; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-user-select: none; user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Solo para lectores de pantalla y buscadores (no se ve) */
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* =========================================================
+   3. ESCENARIO Y LIBRO
+   ========================================================= */
+.escenario { position: fixed; inset: 0; display: grid; place-items: center; }
+.zoom { transition: transform .35s ease; will-change: transform; }
+
+.libro {
+  position: relative;
+  width: calc(var(--W) * 2); height: var(--H);
+  transition: transform .6s cubic-bezier(.4,0,.2,1), opacity .18s linear;
+  outline: none; cursor: pointer;
+  touch-action: pinch-zoom;               /* deja hacer zoom con dos dedos en el celular */
+}
+.libro:focus-visible { outline: 2px solid rgba(255,255,255,.9); outline-offset: 10px; }
+.libro.cargando { opacity: 0; }
+body.ampliado .libro { cursor: zoom-out; }
+
+/* Cada lado del libro (página izquierda / derecha) */
+.lado { position: absolute; top: 0; width: var(--W); height: var(--H); }
+.lado.izq { left: 0; }
+.lado.der { left: var(--W); }
+.lado[hidden], .capa[hidden] { display: none; }
+.capa { position: absolute; left: 0; top: 0; width: calc(var(--W) * 2); height: var(--H); }
+
+/* Una cara de hoja */
+.cara { position: absolute; left: 0; top: 0; width: var(--W); height: var(--H); overflow: hidden; }
+.cara img { display: block; width: 100%; height: 100%; pointer-events: none; -webkit-user-drag: none; }
+.cara.opaca { background: #fff; box-shadow: var(--sombra-libro); }
+
+/* Sombra suave del lomo (en el borde interno de cada página) */
+.cara.lomo-izq::after, .cara.lomo-der::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 8%; pointer-events: none;
+}
+.cara.lomo-izq::after { left: 0;  background: linear-gradient(to right, rgba(0,0,0,.16), rgba(0,0,0,.05) 40%, rgba(0,0,0,0)); }
+.cara.lomo-der::after { right: 0; background: linear-gradient(to left,  rgba(0,0,0,.16), rgba(0,0,0,.05) 40%, rgba(0,0,0,0)); }
+
+/* Papel vegetal: hoja translúcida */
+.cara.vegetal { background: var(--vegetal-velo); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), 0 2px 8px rgba(0,0,0,.06); }
+.cara.vegetal img.espejo { transform: scaleX(-1); opacity: var(--vegetal-dorso); }
+
+/* =========================================================
+   3b. REVISTITA MA (pegada en la página 9)
+   La posición y el tamaño se ajustan en la sección 7b del script.
+   ========================================================= */
+/* Tapa "impresa" en la página: es la que se ve mientras se pasa la hoja grande */
+.rev-tapa {
+  position: absolute; left: var(--RX); top: var(--RY); width: var(--RW); height: var(--RH);
+  box-shadow: 0 2px 6px rgba(0,0,0,.28), 0 0 1px rgba(0,0,0,.25);
+}
+body.rev-activa .rev-tapa { visibility: hidden; }
+
+/* Revistita que se hojea (encima del libro, solo en la página 9) */
+.revista {
+  position: absolute; left: calc(var(--W) + var(--RX)); top: var(--RY);
+  width: var(--RW); height: var(--RH);
+  perspective: calc(var(--RW) * 5); perspective-origin: 0 50%;
+  cursor: zoom-in; outline: none; z-index: 5;
+  touch-action: pinch-zoom;               /* deslizar con un dedo pasa la hoja; con dos, zoom */
+}
+.revista[hidden] { display: none; }
+.revista:focus-visible { outline: 2px solid rgba(255,255,255,.9); outline-offset: 6px; }
+body.rev-zoom .revista { cursor: pointer; }
+.hoja-rev {
+  position: absolute; inset: 0;
+  transform-origin: 0 50%; transform-style: preserve-3d;
+}
+.pag-rev {
+  position: absolute; inset: 0; overflow: hidden; background: #fff;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.22), 0 0 1px rgba(0,0,0,.22);
+}
+.pag-rev.dorso { transform: rotateY(180deg); }
+.pag-rev img { display: block; width: 100%; height: 100%; pointer-events: none; -webkit-user-drag: none; }
+/* sombra del lomo de la revistita y sombra que aparece al pasar la hoja */
+.pag-rev::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 10%; pointer-events: none;
+}
+.pag-rev.frente::after { left: 0;  background: linear-gradient(to right, rgba(0,0,0,.18), rgba(0,0,0,0)); }
+.pag-rev.dorso::after  { right: 0; background: linear-gradient(to left,  rgba(0,0,0,.18), rgba(0,0,0,0)); }
+.pag-rev .luz { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.pag-rev.frente .luz { background: linear-gradient(to left,  rgba(0,0,0,.45), rgba(0,0,0,.12)); }
+.pag-rev.dorso  .luz { background: linear-gradient(to right, rgba(0,0,0,.45), rgba(0,0,0,.12)); }
+
+/* Botón para cerrar la revistita ampliada */
+.cerrar-rev {
+  position: fixed; top: 14px; right: 14px; z-index: 10;
+  width: 44px; height: 44px; border-radius: 50%; border: 0;
+  display: none; place-items: center;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 26px; line-height: 1; cursor: pointer;
+}
+.cerrar-rev:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+body.rev-zoom .cerrar-rev { display: grid; }
+body.rev-zoom .libro { cursor: zoom-out; }
+
+/* Capas que se usan solo mientras se pasa una hoja */
+#bajo { overflow: hidden; }
+.caras { position: absolute; left: 0; top: 0; width: var(--W); height: var(--H); }
+#dorsoCaras { transform-origin: 0 0; }
+.sombra, .brillo {
+  position: absolute; left: 0; top: 0; height: calc(var(--H) * 4);
+  transform-origin: 0 0; pointer-events: none;
+}
+.sombra { background: linear-gradient(to right, rgba(0,0,0,.30), rgba(0,0,0,.10) 40%, rgba(0,0,0,0)); }
+.brillo { background: linear-gradient(to left, rgba(0,0,0,.22), rgba(255,255,255,.10) 18%, rgba(0,0,0,.05) 55%, rgba(0,0,0,0)); }
+
+/* =========================================================
+   4. CARTEL "GIRÁ EL TELÉFONO" (celular en vertical)
+   ========================================================= */
+.girar {
+  position: fixed; inset: 0; display: none;
+  flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  color: #fff; font-size: 17px; letter-spacing: .02em; text-align: center; padding: 24px;
+}
+.girar svg { width: 64px; height: 64px; animation: girar 2.4s ease-in-out infinite; }
+@keyframes girar { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+@media (orientation: portrait) and (max-width: 700px) {
+  .girar { display: flex; }
+  .escenario { visibility: hidden; }
+}
+
+/* Movimiento reducido: sin animaciones decorativas */
+@media (prefers-reduced-motion: reduce) {
+  .libro, .zoom { transition: opacity .18s linear; }
+  .girar svg { animation: none; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- =========================================================
+     5. EL LIBRO (lo arma el script de abajo)
+     ========================================================= -->
+<main class="escenario">
+  <div class="zoom" id="zoom">
+    <div class="libro cargando" id="libro" tabindex="0"
+         aria-label="Portfolio de Pilar Fagalde. Usá las flechas izquierda y derecha para pasar las páginas. Doble clic para ampliar."
+         aria-describedby="estado-lector">
+      <div class="lado izq" id="izq"></div>
+      <div class="lado der" id="der"></div>
+      <!-- capas del pase de hoja -->
+      <div class="lado der" id="bajo" hidden><div class="caras" id="bajoCaras"></div><div class="sombra" id="sombra"></div></div>
+      <div class="lado der" id="frente" hidden><div class="caras" id="frenteCaras"></div></div>
+      <div class="capa" id="dorso" hidden><div class="caras" id="dorsoCaras"></div><div class="brillo" id="brillo"></div></div>
+      <!-- revistita MA (la arma el script) -->
+      <div class="revista" id="revista" hidden tabindex="0" role="button"
+           aria-label="Revistita MA de 12 páginas. Enter para ampliarla y hojearla con las flechas."></div>
+    </div>
+  </div>
+</main>
+
+<button class="cerrar-rev" id="cerrarRev" type="button" aria-label="Cerrar la revistita">&times;</button>
+
+<div class="girar" role="alert">
+  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true">
+    <rect x="20" y="6" width="24" height="52" rx="4"/><line x1="29" y1="51" x2="35" y2="51"/>
+  </svg>
+  Girá el teléfono
+</div>
+
+<p class="sr-only" id="estado-lector" aria-live="polite"></p>
+
+<!-- =========================================================
+     6. TEXTO DEL PORTFOLIO (oculto: para lectores de pantalla y Google)
+     Si cambiás una página, actualizá también su texto acá.
+     ========================================================= -->
+<section class="sr-only" aria-label="Contenido del portfolio en texto">
+  <h1>Pilar Fagalde · Portfolio</h1>
+
+  <h2>Tapa</h2>
+  <p>Hola, soy Pilar Fagalde. Bueno, si llegaste hasta aca, probablemente quieras saber quien esta detras de todas estas paginas, este es mi portfolio. Soy disenadora grafica en formacion, curiosa por naturaleza y bastante inquieta cuando se trata de crear. Mi camino hasta encontrar esta pasion fue largo, siempre supe que me gustaba crear, pero elegir mi camino no fue facil, luego de dos carreras encontre lo que me gustaba y pasar todas las pruebas que me puso la vida no fue facil, pero aca estamos despues de todo. Me gusta explorar, probar, combinar ideas y encontrar formas distintas de comunicar. Disfruto especialmente del proceso de transformar ideas en algo visual: desde pensar un concepto hasta elegir una tipografia, jugar con los colores y cuidar hasta el ultimo detalle. Me interesan la identidad visual, el packaging, el diseno editorial y todo aquello que me permita experimentar y contar historias a traves del diseno. No creo tener un estilo unico y definido, y tampoco se si quiero tenerlo jaja. Me gusta que cada proyecto tenga su propia personalidad y encontrar el lenguaje visual que mejor lo represente. En estas paginas vas a encontrar un poco de todo eso: ideas, proyectos, experimentos y muchas horas de trabajo. Gracias por pasar.</p>
+
+  <h2>Sobre mí</h2>
+  <p>Soy Pilar Fagalde, estudiante avanzada de la Licenciatura en Diseño Gráfico en la UNSTA. Me interesa el diseño como herramienta para comunicar ideas, construir identidades y generar experiencias visuales. Disfruto especialmente del desarrollo conceptual de cada proyecto, la exploración gráfica y la búsqueda de soluciones que combinen creatividad y funcionalidad. Me considero una persona curiosa, detallista, empática y con ganas constantes de aprender, experimentar y seguir desarrollándome profesionalmente. Me gusta involucrarme en cada proyecto y comprender sus necesidades. Valoro el intercambio de ideas, el trabajo colaborativo y la posibilidad de enfrentar nuevos desafíos que me permitan ampliar mi mirada y seguir creciendo como profesional.</p>
+  <p>10/12/2000 · Yerba Buena, Tucumán, Argentina.</p>
+  <h3>Educación</h3>
+  <p>Colegio Santa Rosa, Secundario, 2005-2018. Universidad del Norte Santo Tomás de Aquino, Lic. en Diseño Gráfico, 2023-2026.</p>
+  <h3>Experiencia</h3>
+  <p>ViccaLab, Diseñadora gráfica jr., 2023-Actualidad. Estudio Sins, Diseñadora gráfica jr., Actualidad. Diseño freelance, Diseñadora gráfica jr.</p>
+  <h3>Idiomas</h3>
+  <p>Español: nativo. Inglés: C1.</p>
+  <h3>Habilidades gráficas</h3>
+  <p>Identidad visual, diseño de packaging, diseño editorial, diseño para redes sociales, diseño publicitario, diseño vectorial, motion graphics, edición de video, fotografía y retoque digital.</p>
+  <h3>Habilidades blandas</h3>
+  <p>Escucha activa, empatía, trabajo en equipo, responsabilidad, compromiso, honestidad, adaptabilidad, atención al detalle, manejo del tiempo.</p>
+  <h3>Software</h3>
+  <p>Illustrator, Photoshop, After Effects, Premiere, InDesign.</p>
+  <h3>Contacto</h3>
+  <p>pilifagalde71@gmail.com · +54 9 3812 17-7245</p>
+  <h3>Intereses</h3>
+  <p>Explorar nuevas tendencias visuales. Packaging y diseño de productos. El diseño de marcas. Cultura visual y tendencias. Diseño editorial. La experimentación tipográfica.</p>
+  <h3>Lo que me define</h3>
+  <p>Curiosidad, creatividad, detalle, exploración, comunicación.</p>
+
+  <h2>Identidad visual: Terro</h2>
+  <p>Proyecto académico ficticio que propone el desarrollo de una empresa dedicada a ofrecer experiencias y recorridos de aventura en camiones 4x4. Año: 2026. Cátedra: Proyectual 5. Duración: 7 semanas. Rol: individual.</p>
+
+  <h2>Rebranding: Yungas Clínica Veterinaria</h2>
+  <p>Proyecto académico que consiste en el rebranding de una veterinaria de Tucumán. El desarrollo incluye la creación del sistema de identidad y sus diferentes aplicaciones gráficas.</p>
+
+  <h2>Diseño editorial: Infografía Gato persa</h2>
+  <p>Proyecto académico ficticio que consiste en el desarrollo de una infografía editorial sobre el gato persa, pensada para una publicación de National Geographic. Año: 2026. Cátedra: Diseño editorial. Duración: 6 semanas. Rol: grupal.</p>
+
+  <h2>Diseño editorial: MA</h2>
+  <p>Proyecto académico ficticio que consiste en el diseño editorial de un suplemento para un diario japonés. La propuesta explora la cultura, las tradiciones y la estética de Japón. Año: 2026. Cátedra: Diseño editorial. Duración: 5 semanas. Rol: grupal.</p>
+  <p>Incluye una revistita de 12 páginas que se puede hojear: tapa "Todo tiene lugar", Melancolía por lo efímero, El peso de la identidad, La identidad de la realeza, El arte de habitar, Kimono, El gato japonés Maneki-neko, Envolver e intención, Habitar lo efímero y El zodíaco oriental.</p>
+
+  <h2>Packaging: Crunch!</h2>
+  <p>Proyecto académico que consiste en el desarrollo de la identidad visual y el packaging de una marca ficticia de granola. Año: 2026. Cátedra: Proyectual 5. Duración: 6 semanas. Rol: individual.</p>
+
+  <h2>Packaging: Raíz Café</h2>
+  <p>Proyecto académico que consiste en el diseño de packaging para una línea de café. Año: 2025. Cátedra: Proyectual 4. Duración: 5 semanas. Rol: individual. Diseño de ilustraciones modulares lineales y emblema gráfico de la marca.</p>
+
+  <h2>Packaging: La Sobremesa x Charlá</h2>
+  <p>Proyecto real que consistió en el desarrollo de la identidad visual de una marca y el diseño de un juego de cartas propio. Año: 2025. Duración: 10 semanas. Rol: individual freelance.</p>
+
+  <h2>Contratapa</h2>
+  <p>Hacer del diseño algo más. Contactame: @pilifagalde</p>
+</section>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   7. CONTENIDO DEL LIBRO
+   Cada HOJA tiene un FRENTE (se ve a la derecha) y un DORSO
+   (se ve a la izquierda cuando la pasás).
+   Las imágenes están en la carpeta img/ y se llaman como la
+   página del PDF: "05-izq" = mitad izquierda de la página 5.
+   Para cambiar una página, reemplazá el archivo en img/ con
+   el mismo nombre (1600 × 2263 px).
+   ========================================================= */
+const VEGETAL_BARRAS       = { vegetal: true, barras: 'img/vegetal-barras.png' };
+const VEGETAL_BARRAS_DORSO = { vegetal: true, barras: 'img/vegetal-barras.png', espejo: true };
+const VEGETAL_LISO         = { vegetal: true };
+const pag = (archivo, lomo = true) => ({ src: `img/${archivo}.webp`, lomo });
+
+const HOJAS = [
+  { frente: VEGETAL_BARRAS,           dorso: VEGETAL_BARRAS_DORSO },  // papel vegetal (adelante)
+  { frente: pag('02-der', false),     dorso: pag('03-izq') },         // tapa: carta manuscrita
+  { frente: pag('03-der'),            dorso: pag('04-izq') },
+  { frente: pag('04-der'),            dorso: pag('05-izq') },
+  { frente: pag('05-der'),            dorso: pag('06-izq') },
+  { frente: pag('06-der'),            dorso: pag('07-izq') },
+  { frente: pag('07-der'),            dorso: pag('08-izq') },
+  { frente: pag('08-der'),            dorso: pag('09-izq') },
+  { frente: { ...pag('09-der'), revista: true }, dorso: pag('10-izq') },  // MA + revistita pegada
+  { frente: pag('10-der'),            dorso: pag('11-izq') },
+  { frente: pag('11-der'),            dorso: pag('12-izq') },
+  { frente: pag('12-der'),            dorso: pag('13-izq') },
+  { frente: pag('13-der'),            dorso: pag('14-izq') },
+  { frente: pag('14-der'),            dorso: pag('15-izq') },
+  { frente: pag('15-der'),            dorso: pag('02-izq', false) },  // contratapa azul
+  { frente: VEGETAL_LISO,             dorso: { ...VEGETAL_LISO } },   // papel vegetal (atrás)
+];
+
+// Nombre de cada posición del libro (lo leen los lectores de pantalla)
+const ETIQUETAS = [
+  'Tapa con papel vegetal', 'Tapa: carta', 'Sobre mí y habilidades',
+  'Identidad visual: Terro', 'Terro', 'Terro', 'Rebranding: Yungas Clínica Veterinaria',
+  'Diseño editorial: Infografía Gato persa', 'Diseño editorial: MA, con una revistita para hojear',
+  'Packaging: Crunch!', 'Crunch!', 'Packaging: Raíz Café', 'Raíz Café: emblema e ilustraciones',
+  'Packaging: La Sobremesa x Charlá', 'La Sobremesa x Charlá',
+  'Contratapa', 'Contratapa con papel vegetal'
+];
+
+/* =========================================================
+   7b. REVISTITA MA
+   Va pegada en la página derecha del spread de MA (página 9).
+   Medidas en proporción de UNA página del portfolio:
+   x / y = dónde queda la esquina de arriba a la izquierda (el lomo),
+   ancho = 0.5 → mide media página (74 mm sobre una página A5).
+   Las páginas están en img/revista/01.webp … 12.webp.
+   ========================================================= */
+const REV = {
+  estado: 8,                 // posición del libro donde se ve (spread de MA)
+  x: 0.06, y: 0.265, ancho: 0.5,
+  ratio: 209.764 / 297.638,  // ancho / alto de una página de la revistita
+  paginas: 12,
+  src: n => `img/revista/${String(n).padStart(2, '0')}.webp`,
+};
+
+/* =========================================================
+   8. REFERENCIAS Y ESTADO
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const libro = $('libro'), zoomEl = $('zoom');
+const izq = $('izq'), der = $('der');
+const bajo = $('bajo'), bajoCaras = $('bajoCaras'), sombra = $('sombra');
+const frente = $('frente'), frenteCaras = $('frenteCaras');
+const dorso = $('dorso'), dorsoCaras = $('dorsoCaras'), brillo = $('brillo');
+const lector = $('estado-lector');
+const reducido = matchMedia('(prefers-reduced-motion: reduce)');
+
+const RATIO = 1600 / 2263;   // ancho / alto de una página
+const ULTIMO = HOJAS.length; // posiciones posibles: 0 … ULTIMO
+let W = 0, H = 0;            // tamaño de una página en px
+let estado = 0;              // cuántas hojas se pasaron
+let modo = 'quieto';         // quieto | asomo | presionado | animando
+let pase = null;             // hoja que se está pasando
+let raf = 0, clickTimer = 0;
+let press = null;
+let zoomOn = false;
+const ZOOM = 2.2;
+let RW = 0, RH = 0, RX = 0, RY = 0;  // tamaño y lugar de la revistita en px
+
+/* =========================================================
+   9. MEDIDAS (el libro ocupa ~94 % del ancho o ~90 % del alto)
+   ========================================================= */
+function medir() {
+  const chica = innerHeight < 500;                 // celular apaisado: usar todo el alto
+  const aw = innerWidth * (chica ? 1 : 0.94), ah = innerHeight * (chica ? 1 : 0.9);
+  W = Math.floor(Math.min(aw / 2, ah * RATIO));
+  H = Math.round(W / RATIO);
+  const css = document.documentElement.style;
+  css.setProperty('--W', W + 'px');
+  css.setProperty('--H', H + 'px');
+  // revistita
+  RW = W * REV.ancho; RH = RW / REV.ratio; RX = W * REV.x; RY = H * REV.y;
+  css.setProperty('--RW', RW + 'px'); css.setProperty('--RH', RH + 'px');
+  css.setProperty('--RX', RX + 'px'); css.setProperty('--RY', RY + 'px');
+}
+
+// Libro cerrado: se corre para que la página visible quede centrada
+const desplazamiento = s => s === 0 ? -W / 2 : s === ULTIMO ? W / 2 : 0;
+const moverLibro = s => { libro.style.transform = `translateX(${desplazamiento(s)}px)`; };
+
+/* =========================================================
+   10. DIBUJAR CARAS Y PILAS DE HOJAS
+   ========================================================= */
+// Cada cara se crea una sola vez y se reutiliza: así la imagen ya está decodificada
+// y no hay parpadeos al pasar la hoja.
+const cache = new Map();
+function crearCara(c, lado) {
+  if (cache.has(c)) return cache.get(c);
+  const d = document.createElement('div');
+  cache.set(c, d);
+  d.className = 'cara';
+  if (c.vegetal) {
+    d.classList.add('vegetal');
+    if (c.barras) {
+      const im = new Image(); im.src = c.barras; im.alt = '';
+      if (c.espejo) im.className = 'espejo';
+      d.appendChild(im);
+    }
+  } else {
+    d.classList.add('opaca');
+    if (c.lomo) d.classList.add(lado === 'izq' ? 'lomo-der' : 'lomo-izq');
+    const im = new Image(); im.src = c.src; im.alt = ''; im.decoding = 'async';
+    d.appendChild(im);
+    if (c.revista) {                             // tapa de la revistita pegada en la página
+      const t = document.createElement('div'); t.className = 'rev-tapa';
+      const ti = new Image(); ti.src = REV.src(1); ti.alt = ''; ti.decoding = 'async';
+      t.appendChild(ti); d.appendChild(t);
+    }
+  }
+  return d;
+}
+const pintar = (cont, caras, lado) => cont.replaceChildren(...caras.map(c => crearCara(c, lado)));
+
+// Lo que se ve de cada lado: si arriba hay papel vegetal, también se ve la hoja de abajo
+function pilaDer(s) {
+  const out = [];
+  for (let i = s; i < HOJAS.length; i++) { out.unshift(HOJAS[i].frente); if (!HOJAS[i].frente.vegetal) break; }
+  return out;
+}
+function pilaIzq(s) {
+  const out = [];
+  for (let i = s - 1; i >= 0; i--) { out.unshift(HOJAS[i].dorso); if (!HOJAS[i].dorso.vegetal) break; }
+  return out;
+}
+
+function pintarEstado() {
+  pintar(izq, pilaIzq(estado), 'izq');
+  pintar(der, pilaDer(estado), 'der');
+  izq.hidden = der.hidden = false;
+  bajo.hidden = frente.hidden = dorso.hidden = true;
+  moverLibro(estado);
+  lector.textContent = `${ETIQUETAS[estado]} (${estado + 1} de ${ULTIMO + 1})`;
+  mostrarRevista(estado === REV.estado);
+}
+
+/* =========================================================
+   11. GEOMETRÍA DEL PASE DE HOJA
+   Se toma una esquina (C0) y se lleva a un punto (P).
+   La línea de doblez es la mediatriz entre C0 y P: lo que
+   queda del lado de C0 se dobla y muestra el dorso.
+   ========================================================= */
+function recortar(poly, g) {           // recorta un polígono donde g(x) >= 0
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const A = poly[i], B = poly[(i + 1) % poly.length], ga = g(A), gb = g(B);
+    if (ga >= 0) out.push(A);
+    if ((ga >= 0) !== (gb >= 0)) { const t = ga / (ga - gb); out.push([A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t]); }
+  }
+  return out;
+}
+const poligono = pts => pts.length < 3 ? 'polygon(0 0, 0 0, 0 0)'
+  : 'polygon(' + pts.map(p => `${p[0].toFixed(2)}px ${p[1].toFixed(2)}px`).join(',') + ')';
+
+// La hoja no se puede estirar: la esquina queda a distancia fija del lomo
+function limitar(P, C0) {
+  const A = [W, C0[1]], B = [W, H - C0[1]], D = Math.hypot(W, H);
+  let dx = P[0] - A[0], dy = P[1] - A[1], d = Math.hypot(dx, dy);
+  if (d > W) P = [A[0] + dx * W / d, A[1] + dy * W / d];
+  dx = P[0] - B[0]; dy = P[1] - B[1]; d = Math.hypot(dx, dy);
+  if (d > D) P = [B[0] + dx * D / d, B[1] + dy * D / d];
+  return P;
+}
+
+function dibujar(p, P) {
+  P = limitar(P, p.C0); p.P = P;
+  const C0 = p.C0, ux = C0[0] - P[0], uy = C0[1] - P[1], uu = ux * ux + uy * uy;
+  const offX = p.dir > 0 ? W : 0;
+  if (uu < 0.25) {
+    frente.style.clipPath = 'none';
+    dorso.style.clipPath = poligono([]);
+    sombra.style.opacity = 0;
+    return;
+  }
+  const c = (C0[0] ** 2 + C0[1] ** 2 - P[0] ** 2 - P[1] ** 2) / 2;
+  const f = X => X[0] * ux + X[1] * uy - c;                 // > 0: parte doblada
+  const R = X => { const k = 2 * f(X) / uu; return [X[0] - k * ux, X[1] - k * uy]; };
+  const rect = [[offX, 0], [offX + W, 0], [offX + W, H], [offX, H]];
+
+  frente.style.clipPath = poligono(recortar(rect, X => -f(X)).map(X => [X[0] - offX, X[1]]));
+  dorso.style.clipPath  = poligono(recortar(rect, f).map(R));
+
+  // Ubicación del dorso: espejo sobre el lomo + reflejo sobre el doblez
+  const nat = p.dir > 0 ? 0 : W;
+  const F = (x, y) => R([2 * W - (x + nat), y]);
+  const F0 = F(0, 0), Fx = F(W, 0), Fy = F(0, H);
+  dorsoCaras.style.transform =
+    `matrix(${(Fx[0] - F0[0]) / W},${(Fx[1] - F0[1]) / W},${(Fy[0] - F0[0]) / H},${(Fy[1] - F0[1]) / H},${F0[0]},${F0[1]})`;
+
+  // Sombras a lo largo del doblez
+  const L = Math.sqrt(uu), ang = Math.atan2(uy, ux), M = [(C0[0] + P[0]) / 2, (C0[1] + P[1]) / 2];
+  const k = Math.sin(Math.PI * Math.min(1, L / (2 * W))) * (p.vegetal ? 0.35 : 1);
+  sombra.style.width = Math.max(10, Math.min(W * 0.3, L * 0.35)) + 'px';
+  sombra.style.transform = `translate(${M[0] - offX}px,${M[1]}px) rotate(${ang}rad) translateY(-50%)`;
+  sombra.style.opacity = (0.15 + 0.85 * k).toFixed(3);
+  brillo.style.width = Math.max(10, Math.min(W * 0.5, L * 0.5)) + 'px';
+  brillo.style.transform = `translate(${M[0]}px,${M[1]}px) rotate(${ang}rad) translate(-100%,-50%)`;
+  brillo.style.opacity = p.vegetal ? 0.3 : 1;
+}
+
+const colocar = (el, lado) => { el.classList.toggle('izq', lado === 'izq'); el.classList.toggle('der', lado === 'der'); };
+
+// Prepara las capas para pasar una hoja hacia adelante (dir 1) o atrás (dir -1)
+function iniciarPase(dir, arriba) {
+  const hoja = dir > 0 ? HOJAS[estado] : HOJAS[estado - 1];
+  mostrarRevista(false);                         // mientras pasa la hoja se ve la tapa "impresa"
+  const p = { dir, C0: [dir > 0 ? 2 * W : 0, arriba ? 0 : H], P: null, vegetal: !!hoja.frente.vegetal };
+  if (dir > 0) {
+    der.hidden = true; izq.hidden = false;
+    colocar(bajo, 'der'); colocar(frente, 'der');
+    pintar(bajoCaras, pilaDer(estado + 1), 'der');
+    pintar(frenteCaras, [hoja.frente], 'der');
+    pintar(dorsoCaras, [hoja.dorso], 'izq');
+  } else {
+    izq.hidden = true; der.hidden = false;
+    colocar(bajo, 'izq'); colocar(frente, 'izq');
+    pintar(bajoCaras, pilaIzq(estado - 1), 'izq');
+    pintar(frenteCaras, [hoja.dorso], 'izq');
+    pintar(dorsoCaras, [hoja.frente], 'der');
+  }
+  bajo.hidden = frente.hidden = dorso.hidden = false;
+  dibujar(p, p.C0);
+  return p;
+}
+
+/* =========================================================
+   12. ANIMACIÓN
+   ========================================================= */
+const suave = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const salida = t => 1 - Math.pow(1 - t, 3);
+
+function animar(p, desde, hasta, dur, arco, curva, fin) {
+  cancelAnimationFrame(raf);
+  const t0 = performance.now(), sgn = p.C0[1] === H ? -1 : 1;
+  const paso = ahora => {
+    const t = Math.min(1, (ahora - t0) / dur), e = curva(t);
+    dibujar(p, [
+      desde[0] + (hasta[0] - desde[0]) * e,
+      desde[1] + (hasta[1] - desde[1]) * e + (arco ? sgn * Math.sin(Math.PI * e) * H * 0.08 : 0)
+    ]);
+    if (t < 1) raf = requestAnimationFrame(paso); else fin();
+  };
+  raf = requestAnimationFrame(paso);
+}
+
+function completar(p, desde, arco) {
+  modo = 'animando';
+  moverLibro(estado + p.dir);
+  const hasta = [2 * W - p.C0[0], p.C0[1]];
+  const dur = 250 + 650 * Math.hypot(hasta[0] - desde[0], hasta[1] - desde[1]) / (2 * W);
+  animar(p, desde, hasta, dur, arco, arco ? suave : salida, () => {
+    estado += p.dir; pase = null; modo = 'quieto'; pintarEstado();
+  });
+}
+
+function cancelar(p, desde, dur = 300) {
+  modo = 'animando';
+  moverLibro(estado);
+  animar(p, desde, p.C0, dur, false, salida, () => { pase = null; modo = 'quieto'; pintarEstado(); });
+}
+
+// Pasar una hoja completa (clic, teclado)
+function pasar(dir) {
+  if (zoomOn || revZoom) return;
+  if ((dir > 0 && estado >= ULTIMO) || (dir < 0 && estado <= 0)) return;
+  if (modo === 'animando' || modo === 'presionado') return;
+
+  if (reducido.matches) {                         // transición simple
+    cancelAnimationFrame(raf); pase = null; modo = 'animando';
+    libro.style.opacity = 0;
+    setTimeout(() => { estado += dir; pintarEstado(); libro.style.opacity = 1; modo = 'quieto'; }, 180);
+    return;
+  }
+  let p = (modo === 'asomo' && pase && pase.dir === dir) ? pase : null;
+  cancelAnimationFrame(raf);
+  if (!p) { if (modo === 'asomo') pintarEstado(); p = iniciarPase(dir, false); }
+  pase = p;
+  const quieta = p.P[0] === p.C0[0] && p.P[1] === p.C0[1];
+  completar(p, p.P, quieta);
+}
+
+function irA(s) {
+  if (zoomOn || revZoom || modo === 'animando') return;
+  cancelAnimationFrame(raf); pase = null; modo = 'quieto';
+  estado = Math.max(0, Math.min(ULTIMO, s)); pintarEstado();
+}
+
+/* =========================================================
+   13. MOUSE Y TOQUE: clic, arrastrar la esquina, deslizar
+   ========================================================= */
+function aLibro(e) {
+  const r = libro.getBoundingClientRect();
+  return [(e.clientX - r.left) * (2 * W / r.width), (e.clientY - r.top) * (H / r.height)];
+}
+const conPellizco = () => window.visualViewport && visualViewport.scale > 1.05;
+
+// Esquina "asomada" al pasar el mouse cerca
+function esquina(bx, by) {
+  const z = W * 0.12;
+  if (!(by < z || by > H - z)) return 0;
+  if (estado === REV.estado && revEstado > 0) return 0;   // revistita abierta: no asomar la hoja grande
+  if (bx > 2 * W - z && bx <= 2 * W && estado < ULTIMO) return 1;
+  if (bx < z && bx >= 0 && estado > 0) return -1;
+  return 0;
+}
+function asomar(dir, arriba) {
+  pase = iniciarPase(dir, arriba); modo = 'asomo';
+  const C0 = pase.C0, a = W * 0.07;
+  animar(pase, C0, [C0[0] - dir * a, C0[1] + (arriba ? a : -a)], 180, false, salida, () => {});
+}
+function dejarDeAsomar() {
+  if (modo !== 'asomo' || !pase) return;
+  const p = pase; modo = 'animando';
+  animar(p, p.P, p.C0, 160, false, salida, () => { pase = null; modo = 'quieto'; pintarEstado(); });
+}
+
+libro.addEventListener('pointerdown', e => {
+  if (revZoom) return;                           // lo cierra el listener del documento
+  if (zoomOn || conPellizco() || modo === 'animando' || e.button !== 0) return;
+  const [bx, by] = aLibro(e);
+  const dir = bx >= W ? 1 : -1;
+  if ((dir > 0 && estado >= ULTIMO) || (dir < 0 && estado <= 0)) return;
+  let p = null;
+  if (modo === 'asomo') {
+    cancelAnimationFrame(raf);
+    if (pase && pase.dir === dir) p = pase; else { pase = null; pintarEstado(); }
+  }
+  press = { id: e.pointerId, sx: bx, sy: by, dir, p, base: null, movido: false,
+            ultX: bx, ultT: performance.now(), vx: 0, eraAsomo: !!p };
+  modo = 'presionado';
+  try { libro.setPointerCapture(e.pointerId); } catch (_) {}
+});
+
+libro.addEventListener('pointermove', e => {
+  if (zoomOn) { seguirZoom(e.clientX, e.clientY); return; }
+  if (revZoom) return;
+  const [bx, by] = aLibro(e);
+
+  if (press && e.pointerId === press.id) {
+    if (!press.movido && Math.hypot(bx - press.sx, by - press.sy) > 6) {
+      press.movido = true;
+      clearTimeout(clickTimer);
+      if (!press.p) press.p = iniciarPase(press.dir, press.sy < H / 2);
+      pase = press.p;
+      press.base = press.p.P.slice();
+      moverLibro(estado + press.dir);
+    }
+    if (press.movido) {
+      const k = press.dir > 0 ? 2 * W / Math.max(press.sx, 1) : 2 * W / Math.max(2 * W - press.sx, 1);
+      dibujar(press.p, [press.base[0] + (bx - press.sx) * k, press.base[1] + (by - press.sy)]);
+      const ahora = performance.now(), dt = Math.max(1, ahora - press.ultT);
+      press.vx = press.vx * 0.6 + 0.4 * (bx - press.ultX) / dt;
+      press.ultX = bx; press.ultT = ahora;
+    }
+    return;
+  }
+
+  if (e.pointerType !== 'mouse' || reducido.matches) return;
+  const d = esquina(bx, by);
+  if (modo === 'quieto' && d) asomar(d, by < H / 2);
+  else if (modo === 'asomo' && (!d || d !== pase.dir)) dejarDeAsomar();
+});
+
+/* Celular apaisado: el primer toque pone la página en pantalla completa
+   (oculta las barras del navegador, como una presentación). En iPhone el
+   navegador no lo permite; ahí funciona si se agrega a la pantalla de inicio. */
+function quierePantallaCompleta(e) {
+  return e.pointerType === 'touch' && innerHeight < 500 && innerWidth > innerHeight &&
+         document.fullscreenEnabled && !document.fullscreenElement;
+}
+function pantallaCompleta() {
+  document.documentElement.requestFullscreen({ navigationUI: 'hide' })
+    .then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (_) {} })
+    .catch(() => {});
+}
+
+function soltar(e, cancelado) {
+  if (!press || e.pointerId !== press.id) return;
+  const pr = press; press = null;
+  if (!cancelado && !pr.movido && quierePantallaCompleta(e)) {   // este toque solo agranda
+    modo = 'quieto'; pantallaCompleta(); return;
+  }
+  if (!cancelado && quierePantallaCompleta(e)) pantallaCompleta();
+  if (pr.movido) {
+    const P = pr.p.P;
+    const rapido = pr.dir > 0 ? pr.vx < -0.5 : pr.vx > 0.5;
+    const atras  = pr.dir > 0 ? pr.vx > 0.5  : pr.vx < -0.5;
+    const cruzo  = pr.dir > 0 ? P[0] < W : P[0] > W;
+    if (!cancelado && !atras && (cruzo || rapido)) completar(pr.p, P, false);
+    else cancelar(pr.p, P);
+    return;
+  }
+  // Clic simple: espera un instante por si es doble clic (zoom)
+  modo = pr.eraAsomo ? 'asomo' : 'quieto';
+  if (cancelado) { if (modo === 'asomo') dejarDeAsomar(); return; }
+  clearTimeout(clickTimer);
+  clickTimer = setTimeout(() => pasar(pr.dir), 230);
+}
+libro.addEventListener('pointerup', e => soltar(e, false));
+libro.addEventListener('pointercancel', e => soltar(e, true));
+libro.addEventListener('pointerleave', e => { if (!press && e.pointerType === 'mouse') dejarDeAsomar(); });
+
+/* =========================================================
+   14. ZOOM (doble clic / doble toque; en celular también pellizco)
+   ========================================================= */
+function seguirZoom(x, y) {
+  const w = zoomEl.offsetWidth, h = zoomEl.offsetHeight;
+  zoomEl.style.transformOrigin = `${(x / innerWidth) * w}px ${(y / innerHeight) * h}px`;
+}
+function alternarZoom(x, y) {
+  if (revZoom) return;
+  clearTimeout(clickTimer);
+  if (zoomOn) {
+    zoomOn = false; zoomEl.style.transform = ''; document.body.classList.remove('ampliado');
+    return;
+  }
+  if (modo === 'asomo') { cancelAnimationFrame(raf); pase = null; modo = 'quieto'; pintarEstado(); }
+  if (modo !== 'quieto') return;
+  zoomOn = true; seguirZoom(x, y);
+  zoomEl.style.transform = `scale(${ZOOM})`;
+  document.body.classList.add('ampliado');
+}
+libro.addEventListener('dblclick', e => { e.preventDefault(); alternarZoom(e.clientX, e.clientY); });
+
+/* =========================================================
+   15. TECLADO
+   ========================================================= */
+document.addEventListener('keydown', e => {
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  if (revZoom) {                                 // revistita ampliada: las teclas la hojean
+    switch (e.key) {
+      case 'ArrowRight': case 'PageDown': case ' ': e.preventDefault(); hojearRev(1); break;
+      case 'ArrowLeft':  case 'PageUp':             e.preventDefault(); hojearRev(-1); break;
+      case 'Escape': case 'Enter': e.preventDefault(); cerrarRevista(); break;
+    }
+    return;
+  }
+  if (e.key === 'Enter' && document.activeElement === revEl && !revEl.hidden) {
+    e.preventDefault(); abrirRevista(); return;
+  }
+  switch (e.key) {
+    case 'ArrowRight': case 'PageDown': case ' ': e.preventDefault(); pasar(1); break;
+    case 'ArrowLeft':  case 'PageUp':             e.preventDefault(); pasar(-1); break;
+    case 'Home': e.preventDefault(); irA(0); break;
+    case 'End':  e.preventDefault(); irA(ULTIMO); break;
+    case 'Escape': if (zoomOn) alternarZoom(innerWidth / 2, innerHeight / 2); break;
+    case 'Enter': alternarZoom(innerWidth / 2, innerHeight / 2); break;
+  }
+});
+
+/* =========================================================
+   15b. REVISTITA: armar, hojear, ampliar y cerrar
+   Primer toque: el libro se acerca a la revistita.
+   Ya ampliada: tocar a la derecha del lomo (o deslizar a la
+   izquierda) pasa la hoja; a la izquierda, vuelve. Esc o la
+   cruz cierran.
+   ========================================================= */
+const revEl = $('revista'), cerrarRevBtn = $('cerrarRev');
+const HOJAS_REV = Math.ceil(REV.paginas / 2);   // 12 páginas = 6 hojas
+const hojasRev = [];
+let revEstado = 0;            // cuántas hojas de la revistita se pasaron (0 = cerrada)
+let revZoom = false;          // revistita ampliada
+let revAnim = null, revCola = 0, revPress = null, revAsomada = false;
+const DUR_REV = 650;
+
+function crearRevista() {
+  for (let i = 0; i < HOJAS_REV; i++) {
+    const h = document.createElement('div'); h.className = 'hoja-rev';
+    const cara = (clase, n) => {
+      const c = document.createElement('div'); c.className = 'pag-rev ' + clase;
+      const im = new Image(); im.alt = ''; im.decoding = 'async'; im.dataset.src = REV.src(n);
+      if (n === 1) im.src = im.dataset.src;
+      const luz = document.createElement('div'); luz.className = 'luz';
+      c.append(im, luz);
+      return c;
+    };
+    h.append(cara('frente', 2 * i + 1));
+    if (2 * i + 2 <= REV.paginas) h.append(cara('dorso', 2 * i + 2));
+    hojasRev.push(h); revEl.appendChild(h);
+  }
+  ubicarHojasRev();
+}
+// Las páginas de adentro se cargan al final (o al abrirla), para no demorar el portfolio
+function cargarRevista() {
+  revEl.querySelectorAll('img[data-src]').forEach(im => {
+    if (im.getAttribute('src')) return;
+    im.src = im.dataset.src;
+    im.decode().catch(() => {});                 // decodificada de antemano: sin parpadeo al dar vuelta
+  });
+}
+
+// Hojas pasadas a la izquierda del lomo, el resto a la derecha; la que se mueve, arriba de todo
+function ubicarHojasRev(moviendo = -1) {
+  hojasRev.forEach((h, i) => {
+    const pasada = i < revEstado;
+    h.style.transform = pasada ? 'rotateY(-180deg)' : 'rotateY(0deg)';
+    h.style.zIndex = i === moviendo ? 50 : pasada ? i + 1 : 20 - i;
+  });
+}
+
+function anunciarRev() {
+  const t = revEstado === 0 ? 'tapa'
+          : revEstado === HOJAS_REV ? 'contratapa'
+          : `páginas ${revEstado * 2} y ${revEstado * 2 + 1}`;
+  lector.textContent = `Revistita MA: ${t} (de ${REV.paginas} páginas)`;
+}
+
+function hojearRev(dir) {
+  if (revAnim) { revCola = Math.max(-HOJAS_REV, Math.min(HOJAS_REV, revCola + dir)); return; }
+  const nuevo = revEstado + dir;
+  if (nuevo < 0 || nuevo > HOJAS_REV) return;
+  const i = dir > 0 ? revEstado : revEstado - 1;   // hoja que se mueve
+  revEstado = nuevo;
+  ubicarHojasRev(i);
+  anunciarRev();
+  if (reducido.matches) { ubicarHojasRev(); return; }
+  const desde = dir > 0 ? 0 : -180, hasta = desde - 180 * dir;
+  const opc = { duration: DUR_REV, easing: 'cubic-bezier(.45,.05,.3,1)' };
+  revAnim = hojasRev[i].animate([{ transform: `rotateY(${desde}deg)` }, { transform: `rotateY(${hasta}deg)` }], opc);
+  // la cara se oscurece al pararse y se aclara al apoyarse
+  const [luzFrente, luzDorso] = hojasRev[i].querySelectorAll('.luz');
+  const luz = (el, a) => el && el.animate([{ opacity: a[0] }, { opacity: a[1], offset: .5 }, { opacity: a[2] }], opc);
+  luz(luzFrente, dir > 0 ? [0, 1, 1] : [1, 1, 0]);
+  luz(luzDorso,  dir > 0 ? [1, 1, 0] : [0, 1, 1]);
+  revAnim.onfinish = () => {
+    revAnim = null; ubicarHojasRev();
+    if (revCola) { const d = Math.sign(revCola); revCola -= d; hojearRev(d); }
+  };
+}
+
+// Al llegar a la página 9 la tapa se levanta un poquito, para invitar a abrirla
+function asomarRev() {
+  if (revEl.hidden || revEstado || revAnim || revZoom || reducido.matches) return;
+  hojasRev[0].animate(
+    [{ transform: 'rotateY(0deg)' }, { transform: 'rotateY(-35deg)', offset: .45 }, { transform: 'rotateY(0deg)' }],
+    { duration: 1200, easing: 'ease-in-out' });
+}
+
+function mostrarRevista(si) {
+  if (!si && (revEstado || revAnim)) {            // se va de la página: queda cerrada
+    revCola = 0;
+    if (revAnim) { revAnim.onfinish = null; revAnim.cancel(); revAnim = null; }
+    revEstado = 0; ubicarHojasRev();
+  }
+  revEl.hidden = !si;
+  document.body.classList.toggle('rev-activa', si);
+  if (si && !revAsomada) { revAsomada = true; setTimeout(asomarRev, 700); }
+}
+
+// Acerca el libro para que la revistita abierta (dos páginas) entre en pantalla
+function encuadrarRevista() {
+  const s = Math.min(innerWidth * 0.94 / (2 * RW), innerHeight * 0.9 / RH);
+  const cx = W + RX, cy = RY + RH / 2;           // lomo de la revistita, en px del libro
+  const tx = innerWidth / 2 - zoomEl.offsetLeft - s * cx;
+  const ty = innerHeight / 2 - zoomEl.offsetTop - s * cy;
+  zoomEl.style.transformOrigin = '0 0';
+  zoomEl.style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
+}
+function abrirRevista() {
+  if (revZoom || zoomOn || modo !== 'quieto' || revEl.hidden) return;
+  cargarRevista();
+  revZoom = true;
+  document.body.classList.add('rev-zoom');
+  encuadrarRevista();
+  anunciarRev();
+}
+function cerrarRevista() {
+  if (!revZoom) return;
+  revZoom = false;
+  document.body.classList.remove('rev-zoom');
+  zoomEl.style.transform = '';
+  libro.focus({ preventScroll: true });
+}
+
+revEl.addEventListener('pointerdown', e => {
+  if (zoomOn || modo !== 'quieto' || e.button !== 0) return;   // lo maneja el libro
+  e.stopPropagation();
+  revPress = { id: e.pointerId, x: e.clientX };
+  try { revEl.setPointerCapture(e.pointerId); } catch (_) {}
+});
+revEl.addEventListener('pointermove', e => { if (revPress) e.stopPropagation(); });
+revEl.addEventListener('pointerup', e => {
+  if (!revPress || e.pointerId !== revPress.id) return;
+  e.stopPropagation();
+  const pr = revPress; revPress = null;
+  if (quierePantallaCompleta(e)) pantallaCompleta();
+  if (!revZoom) { abrirRevista(); return; }
+  const dx = e.clientX - pr.x;
+  if (Math.abs(dx) > 30) { hojearRev(dx < 0 ? 1 : -1); return; }   // deslizar
+  const lomo = revEl.getBoundingClientRect().left;
+  hojearRev(e.clientX >= lomo ? 1 : -1);                            // tocar a un lado del lomo
+});
+revEl.addEventListener('pointercancel', e => { if (revPress) { revPress = null; e.stopPropagation(); } });
+revEl.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); });
+
+// Tocar fuera de la revistita ampliada la cierra
+document.addEventListener('pointerdown', e => {
+  if (revZoom && !revEl.contains(e.target) && e.target !== cerrarRevBtn) cerrarRevista();
+});
+cerrarRevBtn.addEventListener('click', cerrarRevista);
+
+crearRevista();
+
+/* =========================================================
+   16. PRECARGA DE IMÁGENES Y ARRANQUE
+   ========================================================= */
+function precargar() {
+  // Todas las caras en orden de lectura (frentes a la derecha, dorsos a la izquierda)
+  const caras = [];
+  HOJAS.forEach(h => caras.push([h.frente, 'der'], [h.dorso, 'izq']));
+  const cargar = ([c, lado]) => {
+    const im = crearCara(c, lado).querySelector('img');
+    return im ? im.decode().catch(() => {}) : Promise.resolve();
+  };
+  // primero lo que se ve al abrir, después el resto de a una
+  return Promise.all(caras.slice(0, 6).map(cargar)).then(() => {
+    caras.slice(6).reduce((cadena, c) => cadena.then(() => cargar(c)), Promise.resolve())
+      .then(cargarRevista);                      // al final, las páginas de la revistita
+  });
+}
+
+let resizeT = 0;
+addEventListener('resize', () => {
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    medir();
+    if (modo !== 'animando' && modo !== 'presionado') { cancelAnimationFrame(raf); pase = null; modo = 'quieto'; pintarEstado(); }
+    if (revZoom) encuadrarRevista();
+  }, 120);
+});
+
+medir();
+pintarEstado();
+precargar().then(() => { libro.classList.remove('cargando'); libro.focus({ preventScroll: true }); });
+
+// Para pruebas desde la consola
+window.__libro = { pasar, irA, get estado() { return estado; } };
+})();
+</script>
+</body>
+</html>
