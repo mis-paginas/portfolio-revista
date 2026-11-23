@@ -97,7 +97,7 @@ body.rev-activa .rev-tapa { visibility: hidden; }
   position: absolute; left: calc(var(--W) + var(--RX)); top: var(--RY);
   width: var(--RW); height: var(--RH);
   perspective: calc(var(--RW) * 5); perspective-origin: 0 50%;
-  cursor: zoom-in; outline: none; z-index: 5;
+  cursor: pointer; outline: none; z-index: 5;
   touch-action: pinch-zoom;               /* deslizar con un dedo pasa la hoja; con dos, zoom */
 }
 .revista[hidden] { display: none; }
@@ -123,6 +123,19 @@ body.rev-zoom .revista { cursor: pointer; }
 .pag-rev .luz { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
 .pag-rev.frente .luz { background: linear-gradient(to left,  rgba(0,0,0,.45), rgba(0,0,0,.12)); }
 .pag-rev.dorso  .luz { background: linear-gradient(to right, rgba(0,0,0,.45), rgba(0,0,0,.12)); }
+
+/* Lupa al costado de la revistita: la amplía */
+.lupa-rev {
+  position: absolute; z-index: 6;
+  left: calc(var(--W) + var(--RX) + var(--RW) + 8px); top: calc(var(--RY) + var(--RH) - 32px);
+  width: 32px; height: 32px; border-radius: 50%; border: 0; padding: 0;
+  display: grid; place-items: center; cursor: zoom-in;
+  background: rgba(255,255,255,.92); color: #222;
+  box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+.lupa-rev[hidden], body.rev-zoom .lupa-rev { display: none; }
+.lupa-rev svg { width: 17px; height: 17px; }
+.lupa-rev:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 /* Botón para cerrar la revistita ampliada */
 .cerrar-rev {
@@ -187,7 +200,12 @@ body.rev-zoom .libro { cursor: zoom-out; }
       <div class="capa" id="dorso" hidden><div class="caras" id="dorsoCaras"></div><div class="brillo" id="brillo"></div></div>
       <!-- revistita MA (la arma el script) -->
       <div class="revista" id="revista" hidden tabindex="0" role="button"
-           aria-label="Revistita MA de 12 páginas. Enter para ampliarla y hojearla con las flechas."></div>
+           aria-label="Revistita MA de 12 páginas. Flechas para hojearla, Enter para ampliarla."></div>
+      <button class="lupa-rev" id="lupaRev" type="button" hidden aria-label="Ampliar la revistita" title="Ampliar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/><line x1="10.5" y1="7.5" x2="10.5" y2="13.5"/><line x1="7.5" y1="10.5" x2="13.5" y2="10.5"/>
+        </svg>
+      </button>
     </div>
   </div>
 </main>
@@ -314,11 +332,13 @@ const ETIQUETAS = [
    Medidas en proporción de UNA página del portfolio:
    x / y = dónde queda la esquina de arriba a la izquierda (el lomo),
    ancho = 0.5 → mide media página (74 mm sobre una página A5).
+   Con x 0.243 / y 0.36 queda centrada sobre el mockup del Zodíaco
+   (el mockup va de 0.156 a 0.856 de ancho y de 0.247 a 0.985 de alto).
    Las páginas están en img/revista/01.webp … 12.webp.
    ========================================================= */
 const REV = {
   estado: 8,                 // posición del libro donde se ve (spread de MA)
-  x: 0.06, y: 0.265, ancho: 0.5,
+  x: 0.243, y: 0.36, ancho: 0.5,
   ratio: 209.764 / 297.638,  // ancho / alto de una página de la revistita
   paginas: 12,
   src: n => `img/revista/${String(n).padStart(2, '0')}.webp`,
@@ -725,8 +745,12 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
-  if (e.key === 'Enter' && document.activeElement === revEl && !revEl.hidden) {
-    e.preventDefault(); abrirRevista(); return;
+  if (document.activeElement === revEl && !revEl.hidden) {   // revistita con foco: las teclas la hojean
+    switch (e.key) {
+      case 'Enter':      e.preventDefault(); abrirRevista(); return;
+      case 'ArrowRight': case 'PageDown': case ' ': e.preventDefault(); hojearRev(1); return;
+      case 'ArrowLeft':  case 'PageUp':             e.preventDefault(); hojearRev(-1); return;
+    }
   }
   switch (e.key) {
     case 'ArrowRight': case 'PageDown': case ' ': e.preventDefault(); pasar(1); break;
@@ -740,12 +764,13 @@ document.addEventListener('keydown', e => {
 
 /* =========================================================
    15b. REVISTITA: armar, hojear, ampliar y cerrar
-   Primer toque: el libro se acerca a la revistita.
-   Ya ampliada: tocar a la derecha del lomo (o deslizar a la
-   izquierda) pasa la hoja; a la izquierda, vuelve. Esc o la
-   cruz cierran.
+   Se hojea tal cual está o ampliada: tocar a la derecha del
+   lomo (o deslizar a la izquierda) pasa la hoja; a la
+   izquierda, vuelve. Doble toque o la lupa la amplían;
+   Esc, la cruz o tocar afuera la cierran.
    ========================================================= */
-const revEl = $('revista'), cerrarRevBtn = $('cerrarRev');
+const revEl = $('revista'), cerrarRevBtn = $('cerrarRev'), lupaRev = $('lupaRev');
+let revToqueT = 0;            // espera un instante por si es doble toque
 const HOJAS_REV = Math.ceil(REV.paginas / 2);   // 12 páginas = 6 hojas
 const hojasRev = [];
 let revEstado = 0;            // cuántas hojas de la revistita se pasaron (0 = cerrada)
@@ -796,6 +821,7 @@ function anunciarRev() {
 }
 
 function hojearRev(dir) {
+  if (revEl.hidden) return;
   if (revAnim) { revCola = Math.max(-HOJAS_REV, Math.min(HOJAS_REV, revCola + dir)); return; }
   const nuevo = revEstado + dir;
   if (nuevo < 0 || nuevo > HOJAS_REV) return;
@@ -832,7 +858,7 @@ function mostrarRevista(si) {
     if (revAnim) { revAnim.onfinish = null; revAnim.cancel(); revAnim = null; }
     revEstado = 0; ubicarHojasRev();
   }
-  revEl.hidden = !si;
+  revEl.hidden = lupaRev.hidden = !si;
   document.body.classList.toggle('rev-activa', si);
   if (si && !revAsomada) { revAsomada = true; setTimeout(asomarRev, 700); }
 }
@@ -874,11 +900,14 @@ revEl.addEventListener('pointerup', e => {
   e.stopPropagation();
   const pr = revPress; revPress = null;
   if (quierePantallaCompleta(e)) pantallaCompleta();
-  if (!revZoom) { abrirRevista(); return; }
   const dx = e.clientX - pr.x;
-  if (Math.abs(dx) > 30) { hojearRev(dx < 0 ? 1 : -1); return; }   // deslizar
-  const lomo = revEl.getBoundingClientRect().left;
-  hojearRev(e.clientX >= lomo ? 1 : -1);                            // tocar a un lado del lomo
+  if (Math.abs(dx) > 30) { clearTimeout(revToqueT); revToqueT = 0; hojearRev(dx < 0 ? 1 : -1); return; }   // deslizar
+  const dir = e.clientX >= revEl.getBoundingClientRect().left ? 1 : -1;   // de qué lado del lomo se tocó
+  if (revZoom) { hojearRev(dir); return; }       // ampliada: pasa al instante
+  if (revToqueT) {                               // segundo toque seguido: ampliar
+    clearTimeout(revToqueT); revToqueT = 0; abrirRevista(); return;
+  }
+  revToqueT = setTimeout(() => { revToqueT = 0; hojearRev(dir); }, 230);
 });
 revEl.addEventListener('pointercancel', e => { if (revPress) { revPress = null; e.stopPropagation(); } });
 revEl.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); });
@@ -888,6 +917,11 @@ document.addEventListener('pointerdown', e => {
   if (revZoom && !revEl.contains(e.target) && e.target !== cerrarRevBtn) cerrarRevista();
 });
 cerrarRevBtn.addEventListener('click', cerrarRevista);
+// La lupa no debe pasar la hoja grande
+lupaRev.addEventListener('pointerdown', e => e.stopPropagation());
+lupaRev.addEventListener('pointerup', e => e.stopPropagation());
+lupaRev.addEventListener('dblclick', e => { e.stopPropagation(); e.preventDefault(); });
+lupaRev.addEventListener('click', e => { e.stopPropagation(); abrirRevista(); });
 
 crearRevista();
 
