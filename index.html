@@ -229,7 +229,7 @@ body.rev-zoom .libro { cursor: zoom-out; }
   <h1>Pilar Fagalde · Portfolio</h1>
 
   <h2>Tapa</h2>
-  <p>Hola, soy Pilar Fagalde. Bueno, si llegaste hasta aca, probablemente quieras saber quien esta detras de todas estas paginas, este es mi portfolio. Soy disenadora grafica en formacion, curiosa por naturaleza y bastante inquieta cuando se trata de crear. Mi camino hasta encontrar esta pasion fue largo, siempre supe que me gustaba crear, pero elegir mi camino no fue facil, luego de dos carreras encontre lo que me gustaba y pasar todas las pruebas que me puso la vida no fue facil, pero aca estamos despues de todo. Me gusta explorar, probar, combinar ideas y encontrar formas distintas de comunicar. Disfruto especialmente del proceso de transformar ideas en algo visual: desde pensar un concepto hasta elegir una tipografia, jugar con los colores y cuidar hasta el ultimo detalle. Me interesan la identidad visual, el packaging, el diseno editorial y todo aquello que me permita experimentar y contar historias a traves del diseno. No creo tener un estilo unico y definido, y tampoco se si quiero tenerlo jaja. Me gusta que cada proyecto tenga su propia personalidad y encontrar el lenguaje visual que mejor lo represente. En estas paginas vas a encontrar un poco de todo eso: ideas, proyectos, experimentos y muchas horas de trabajo. Gracias por pasar.</p>
+  <p>Hola, soy Pilar Fagalde. Bueno, si llegaste hasta acá, probablemente quieras saber quién está detrás de todas estas páginas, este es mi portfolio. Soy diseñadora gráfica en formación, curiosa por naturaleza y bastante inquieta cuando se trata de crear. Mi camino hasta encontrar esta pasión fue largo, siempre supe que me gustaba crear, pero elegir mi camino no fue fácil, luego de dos carreras encontré lo que me gustaba y pasar todas las pruebas que me puso la vida no fue fácil, pero acá estamos después de todo. Me gusta explorar, probar, combinar ideas y encontrar formas distintas de comunicar. Disfruto especialmente del proceso de transformar ideas en algo visual: desde pensar un concepto hasta elegir una tipografía, jugar con los colores y cuidar hasta el último detalle. Me interesan la identidad visual, el packaging, el diseño editorial y todo aquello que me permita experimentar y contar historias a través del diseño. No creo tener un estilo único y definido, y tampoco sé si quiero tenerlo jaja. Me gusta que cada proyecto tenga su propia personalidad y encontrar el lenguaje visual que mejor lo represente. En estas páginas vas a encontrar un poco de todo eso: ideas, proyectos, experimentos y muchas horas de trabajo. Gracias por pasar.</p>
 
   <h2>Sobre mí</h2>
   <p>Soy Pilar Fagalde, estudiante avanzada de la Licenciatura en Diseño Gráfico en la UNSTA. Me interesa el diseño como herramienta para comunicar ideas, construir identidades y generar experiencias visuales. Disfruto especialmente del desarrollo conceptual de cada proyecto, la exploración gráfica y la búsqueda de soluciones que combinen creatividad y funcionalidad. Me considero una persona curiosa, detallista, empática y con ganas constantes de aprender, experimentar y seguir desarrollándome profesionalmente. Me gusta involucrarme en cada proyecto y comprender sus necesidades. Valoro el intercambio de ideas, el trabajo colaborativo y la posibilidad de enfrentar nuevos desafíos que me permitan ampliar mi mirada y seguir creciendo como profesional.</p>
@@ -334,12 +334,12 @@ const ETIQUETAS = [
    ancho = 0.5 → mide media página (74 mm sobre una página A5).
    x 0 = el lomo de la revistita queda sobre el pliegue central del
    portfolio, así abierta queda centrada en el pliego grande.
-   y 0.36 = su centro a la altura del centro de las tapas grandes.
+   y 'centro' = centrada en el alto de la página (o un número: 0 = arriba).
    Las páginas están en img/revista/01.webp … 12.webp.
    ========================================================= */
 const REV = {
   estado: 8,                 // posición del libro donde se ve (spread de MA)
-  x: 0, y: 0.36, ancho: 0.5,
+  x: 0, y: 'centro', ancho: 0.5,
   ratio: 209.764 / 297.638,  // ancho / alto de una página de la revistita
   paginas: 12,
   src: n => `img/revista/${String(n).padStart(2, '0')}.webp`,
@@ -381,7 +381,7 @@ function medir() {
   css.setProperty('--W', W + 'px');
   css.setProperty('--H', H + 'px');
   // revistita
-  RW = W * REV.ancho; RH = RW / REV.ratio; RX = W * REV.x; RY = H * REV.y;
+  RW = W * REV.ancho; RH = RW / REV.ratio; RX = W * REV.x; RY = REV.y === 'centro' ? (H - RH) / 2 : H * REV.y;
   css.setProperty('--RW', RW + 'px'); css.setProperty('--RH', RH + 'px');
   css.setProperty('--RX', RX + 'px'); css.setProperty('--RY', RY + 'px');
 }
